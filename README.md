@@ -1,3 +1,5 @@
+//Projeto em correção de bugs, apenas arquitetura e lógica implementadas
+
 # Sistema de Autenticação Avançado
 
 Este sistema de autenticação foi desenvolvido com base na observação de problemas comuns em soluções ensinadas na maioria dos cursos. A ideia era criar algo que **combinasse segurança, performance e simplicidade**, sem recorrer à autenticação por sessão, que traz limitações de escalabilidade e complexidade na manutenção.
