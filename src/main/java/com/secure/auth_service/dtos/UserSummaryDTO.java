@@ -5,14 +5,17 @@ import com.secure.auth_service.enums.Roles;
 import com.secure.auth_service.models.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class UserSummaryDTO extends AbstractDTO {
 
     @Schema(description = "ID do usuário", example = "d290f1ee-6c54-4b01-90e6-d701748f0851")
@@ -50,7 +53,7 @@ public class UserSummaryDTO extends AbstractDTO {
                 .name(this.name)
                 .login(this.login)
                 .role(this.role)
-                .authorities(this.authorities)
+                .authorities(new HashSet<>(this.authorities))
                 .enabled(this.enabled)
                 .build();
     }

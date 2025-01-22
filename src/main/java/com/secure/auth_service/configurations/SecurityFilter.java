@@ -1,7 +1,7 @@
 package com.secure.auth_service.configurations;
 
+import com.secure.auth_service.enums.Authority;
 import com.secure.auth_service.enums.Roles;
-import com.secure.auth_service.exceptions.CustomException;
 import com.secure.auth_service.models.User;
 import com.secure.auth_service.utils.TokenUtils;
 import jakarta.servlet.FilterChain;
@@ -9,10 +9,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,6 +22,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Component
@@ -28,11 +32,10 @@ public class SecurityFilter extends OncePerRequestFilter {
     private final TokenUtils tokenUtils;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+    protected void doFilterInternal(@NotNull HttpServletRequest request,
+                                    @NotNull HttpServletResponse response,
+                                    @NotNull FilterChain filterChain)
             throws ServletException, IOException {
-
         if (isExcluded(request)) {
             filterChain.doFilter(request, response);
             return;
@@ -46,7 +49,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         if (isAccessTokenValid) {
             String login = tokenUtils.getLoginFromToken(accessToken);
-            authenticateUser(login, accessToken);
+            authenticateUser(login, accessToken, response);
         } else if (isRefreshTokenValid) {
             String login = tokenUtils.getLoginFromToken(refreshToken);
             authenticateUserWithTokenRefresh(login, request, response);
@@ -64,27 +67,22 @@ public class SecurityFilter extends OncePerRequestFilter {
                 ("/auth/register".equals(uri) && "POST".equalsIgnoreCase(method));
     }
 
-    private void authenticateUser(String login, String accessToken) {
+    private void authenticateUser(String login, String accessToken, HttpServletResponse response) {
         if (login == null) return;
 
         String roleStr = tokenUtils.getRoleFromToken(accessToken);
+        Set<Authority> authorities = tokenUtils.getAuthoritiesFromToken(accessToken);
 
         User user = new User();
         user.setLogin(login);
-        try {
-            user.setRole(Roles.valueOf(roleStr.toUpperCase())); // Usar o nome correto da enum
-        } catch (IllegalArgumentException e) {
-            throw new CustomException("Role inválido no token: " + e.getMessage());
-        }
+        user.setRole(Roles.valueOf(roleStr));
+        user.setAuthorities(authorities);
 
         setAuthentication(user);
     }
 
     private void authenticateUserWithTokenRefresh(String login, HttpServletRequest request, HttpServletResponse response) {
-        if (login == null) {
-            removeAuthCookies(response);
-            return;
-        }
+        if (login == null) return;
 
         String idToken = recoverTokenFromCookie(request, "id_token");
         if (idToken == null) {
@@ -100,7 +98,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         long accessTokenMaxAge = tokenUtils.getAccessTokenMaxAge();
         long refreshTokenMaxAge = tokenUtils.getRefreshTokenMaxAge();
-        long idTokenMaxAge = tokenUtils.getIdTokenMaxAge();
+        long idTokenMaxAge = tokenUtils.getRefreshTokenMaxAge();
 
         List<ResponseCookie> cookies = new ArrayList<>();
         cookies.add(createCookie("access_token", true, newAccessToken, accessTokenMaxAge));

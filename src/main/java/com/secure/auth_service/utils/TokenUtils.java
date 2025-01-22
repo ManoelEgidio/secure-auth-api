@@ -1,17 +1,16 @@
 package com.secure.auth_service.utils;
 
-import com.secure.auth_service.enums.Roles;
-import com.secure.auth_service.exceptions.CustomException;
-import com.secure.auth_service.models.User;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.secure.auth_service.enums.Authority;
+import com.secure.auth_service.enums.Roles;
+import com.secure.auth_service.models.User;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
@@ -19,44 +18,32 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
-@Component
+@Service
 public class TokenUtils {
 
     @Value("${jwt.private-key}")
-    private String privateKeyPem;
+    String privateKeyPem;
 
     @Value("${jwt.public-key}")
-    private String publicKeyPem;
-
-    @Value("${jwt.access.token.expiration}")
-    private long accessTokenExpiration;
-
-    @Value("${jwt.refresh.token.expiration}")
-    private long refreshTokenExpiration;
-
-    @Value("${jwt.id.token.expiration}")
-    private long idTokenExpiration;
+    String publicKeyPem;
 
     private RSAPrivateKey privateKey;
     private RSAPublicKey publicKey;
-
-    private Algorithm algorithm;
+    private static final long ACCESS_TOKEN_EXPIRATION_MINUTES = 30;
+    private static final long REFRESH_TOKEN_EXPIRATION_DAYS = 7;
 
     @PostConstruct
     public void init() {
         try {
             this.privateKey = loadPrivateKey(privateKeyPem);
             this.publicKey = loadPublicKey(publicKeyPem);
-            this.algorithm = Algorithm.RSA256(publicKey, privateKey);
         } catch (Exception e) {
-            throw new CustomException("Falha ao carregar as chaves RSA para JWT: " + e.getMessage());
+            throw new RuntimeException("Falha ao carregar as chaves", e);
         }
     }
 
@@ -65,6 +52,7 @@ public class TokenUtils {
             String privateKeyContent = key
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
+                    .replace("\n", "")
                     .replaceAll("\\s+", "");
 
             byte[] decoded = Base64.getDecoder().decode(privateKeyContent);
@@ -72,7 +60,7 @@ public class TokenUtils {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return (RSAPrivateKey) kf.generatePrivate(keySpec);
         } catch (Exception e) {
-            throw new CustomException("Erro ao carregar a chave privada: " + e.getMessage());
+            throw new RuntimeException("Erro ao carregar a chave privada: " + e.getMessage(), e);
         }
     }
 
@@ -81,6 +69,7 @@ public class TokenUtils {
             String publicKeyContent = key
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "")
+                    .replace("\n", "")
                     .replaceAll("\\s+", "");
 
             byte[] decoded = Base64.getDecoder().decode(publicKeyContent);
@@ -88,67 +77,117 @@ public class TokenUtils {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return (RSAPublicKey) kf.generatePublic(keySpec);
         } catch (Exception e) {
-            throw new CustomException("Erro ao carregar a chave pública: " + e.getMessage());
-        }
-    }
-
-    public String generateAccessToken(User user) {
-        try {
-            List<String> authorities = user.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
-
-            return JWT.create()
-                    .withIssuer("auth-service")
-                    .withSubject(user.getLogin())
-                    .withClaim("role", user.getRole().name())
-                    .withClaim("authority", authorities)
-                    .withIssuedAt(new Date())
-                    .withExpiresAt(Date.from(Instant.now().plusMillis(accessTokenExpiration)))
-                    .sign(algorithm);
-        } catch (Exception e) {
-            throw new CustomException("Falha ao gerar o Access Token: " + e.getMessage());
+            throw new RuntimeException("Erro ao carregar a chave pública: " + e.getMessage(), e);
         }
     }
 
     public String generateRefreshToken(User user) {
         try {
-            return JWT.create()
-                    .withIssuer("auth-service")
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            String token = JWT.create()
+                    .withIssuer("auth-api")
                     .withSubject(user.getLogin())
                     .withClaim("type", "refresh")
-                    .withIssuedAt(new Date())
-                    .withExpiresAt(Date.from(Instant.now().plusMillis(refreshTokenExpiration)))
+                    .withExpiresAt(genRefreshTokenExpiration())
+                    .sign(algorithm);
+            System.out.println("Refresh Token gerado com sucesso.");
+            return token;
+        } catch (Exception e) {
+            throw new RuntimeException("Falha ao gerar o Refresh Token: " + e.getMessage(), e);
+        }
+    }
+
+    public String generateAccessToken(User user) {
+        try {
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            return JWT.create()
+                    .withIssuer("auth-api")
+                    .withSubject(user.getLogin())
+                    .withClaim("id", user.getId() != null ? user.getId().toString() : null)
+                    .withClaim("role", user.getRole().name())
+                    .withArrayClaim("authorities",
+                            user.getAuthorities().stream()
+                                    .map(GrantedAuthority::getAuthority)
+                                    .toArray(String[]::new))
+                    .withExpiresAt(genAccessTokenExpiration())
                     .sign(algorithm);
         } catch (Exception e) {
-            throw new CustomException("Falha ao gerar o Refresh Token: " + e.getMessage());
+            throw new RuntimeException("Falha ao gerar o Access Token: " + e.getMessage(), e);
         }
     }
 
     public String generateIdToken(User user) {
         try {
-            List<String> authorities = user.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
-
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
             return JWT.create()
-                    .withIssuer("auth-service")
+                    .withIssuer("auth-api")
                     .withSubject(user.getLogin())
-                    .withClaim("id", user.getId().toString())
+                    .withClaim("id", user.getId() != null ? user.getId().toString() : null)
                     .withClaim("name", user.getName())
                     .withClaim("role", user.getRole().name())
-                    .withClaim("authority", authorities)
-                    .withExpiresAt(Date.from(Instant.now().plusMillis(idTokenExpiration)))
+                    .withArrayClaim("authorities",
+                            user.getAuthorities().stream()
+                                    .map(GrantedAuthority::getAuthority)
+                                    .toArray(String[]::new))
+                    .withExpiresAt(genRefreshTokenExpiration())
                     .sign(algorithm);
         } catch (Exception e) {
-            throw new CustomException("Falha ao gerar o ID Token: " + e.getMessage());
+            throw new RuntimeException("Falha ao gerar o ID Token: " + e.getMessage(), e);
+        }
+    }
+
+    public String getLoginFromToken(String token) {
+        try {
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            DecodedJWT jwt = JWT.require(algorithm)
+                    .withIssuer("auth-api")
+                    .build()
+                    .verify(token);
+            return jwt.getSubject();
+        } catch (JWTVerificationException exception) {
+            return null;
+        }
+    }
+
+    public String getRoleFromToken(String token) {
+        try {
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            DecodedJWT jwt = JWT.require(algorithm)
+                    .withIssuer("auth-api")
+                    .build()
+                    .verify(token);
+            return jwt.getClaim("role").asString();
+        } catch (JWTVerificationException exception) {
+            return null;
+        }
+    }
+
+    public Set<Authority> getAuthoritiesFromToken(String token) {
+        try {
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            DecodedJWT jwt = JWT.require(algorithm)
+                    .withIssuer("auth-api")
+                    .build()
+                    .verify(token);
+
+            String[] authoritiesArray = jwt.getClaim("authorities").asArray(String.class);
+            if (authoritiesArray != null) {
+                return Arrays.stream(authoritiesArray)
+                        .map(Authority::valueOf)
+                        .collect(Collectors.toSet());
+            } else {
+                return Collections.emptySet();
+            }
+        } catch (JWTVerificationException exception) {
+            return Collections.emptySet();
         }
     }
 
     public User getUserFromIdToken(String idToken) {
         try {
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
             DecodedJWT jwt = JWT.require(algorithm)
-                    .withIssuer("auth-service")
+                    .withIssuer("auth-api")
                     .build()
                     .verify(idToken);
 
@@ -156,101 +195,81 @@ public class TokenUtils {
 
             String idStr = jwt.getClaim("id").asString();
             if (idStr != null && !idStr.isEmpty()) {
-                try {
-                    user.setId(UUID.fromString(idStr));
-                } catch (IllegalArgumentException e) {
-                    throw new CustomException("Formato inválido para o 'id' no token: " + e.getMessage());
-                }
-            } else {
-                throw new CustomException("O claim 'id' está ausente ou é vazio no token.");
+                user.setId(UUID.fromString(idStr));
             }
 
-            String login = jwt.getSubject();
-            if (login != null && !login.isEmpty()) {
-                user.setLogin(login);
-            } else {
-                throw new CustomException("O token não contém um 'login' válido.");
-            }
+            user.setLogin(jwt.getSubject());
 
             String roleStr = jwt.getClaim("role").asString();
-            if (roleStr != null && !roleStr.isEmpty()) {
-                try {
-                    user.setRole(Roles.valueOf(roleStr));
-                } catch (IllegalArgumentException e) {
-                    throw new CustomException("Role inválido no token: " + e.getMessage());
+            user.setRole(Roles.valueOf(roleStr));
+
+            String[] authoritiesArray = jwt.getClaim("authorities").asArray(String.class);
+            if (authoritiesArray != null) {
+                Set<Authority> authorities = new HashSet<>();
+                for (String authority : authoritiesArray) {
+                    if (!authority.startsWith("ROLE_")) {
+                        authorities.add(Authority.valueOf(authority));
+                    }
                 }
-            } else {
-                throw new CustomException("O token não contém um 'role' válido.");
+                user.setAuthorities(authorities);
             }
 
-            String name = jwt.getClaim("name").asString();
-            if (name != null && !name.isEmpty()) {
-                user.setName(name);
-            } else {
-                throw new CustomException("O token não contém um 'name' válido.");
-            }
+            user.setName(jwt.getClaim("name").asString());
 
             return user;
-        } catch (JWTVerificationException e) {
-            throw new CustomException("Erro ao verificar o ID Token: " + e.getMessage());
         } catch (Exception e) {
-            throw new CustomException("Erro ao reconstruir usuário do ID token: " + e.getMessage());
+            throw new RuntimeException("Erro ao reconstruir usuário do ID token: " + e.getMessage(), e);
         }
     }
 
+
+
+
     public boolean validateAccessToken(String token) {
-        return validateToken(token, false);
-    }
-
-    public boolean validateRefreshToken(String token) {
-        return validateToken(token, true);
-    }
-
-    private boolean validateToken(String token, boolean isRefreshToken) {
         try {
-            var verifier = JWT.require(algorithm)
-                    .withIssuer("auth-service");
-            if (isRefreshToken) {
-                verifier.withClaim("type", "refresh");
-            }
-            verifier.build().verify(token);
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            JWT.require(algorithm)
+                    .withIssuer("auth-api")
+                    .build()
+                    .verify(token);
             return true;
-        } catch (JWTVerificationException e) {
+        } catch (JWTVerificationException exception) {
             return false;
         }
     }
 
-    public String getLoginFromToken(String token) {
+    public boolean validateRefreshToken(String token) {
         try {
-            DecodedJWT jwt = JWT.decode(token);
-            return jwt.getSubject();
-        } catch (Exception e) {
-            throw new CustomException("Erro ao extrair o login do token: " + e.getMessage());
-        }
-    }
-
-    public String getRoleFromToken(String token) {
-        try {
-            DecodedJWT jwt = JWT.decode(token);
-            String role = jwt.getClaim("role").asString();
-            if (role == null || role.isEmpty()) {
-                throw new CustomException("O token não contém um 'role' válido.");
-            }
-            return role;
-        } catch (Exception e) {
-            throw new CustomException("Erro ao extrair o role do token: " + e.getMessage());
+            Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
+            JWT.require(algorithm)
+                    .withIssuer("auth-api")
+                    .withClaim("type", "refresh")
+                    .build()
+                    .verify(token);
+            return true;
+        } catch (JWTVerificationException exception) {
+            return false;
         }
     }
 
     public long getAccessTokenMaxAge() {
-        return accessTokenExpiration / 1000;
+        return ACCESS_TOKEN_EXPIRATION_MINUTES * 30;
     }
 
     public long getRefreshTokenMaxAge() {
-        return refreshTokenExpiration / 1000;
+        return REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60;
     }
 
-    public long getIdTokenMaxAge() {
-        return idTokenExpiration / 1000;
+    private Instant genAccessTokenExpiration() {
+        return ZonedDateTime.now(ZoneOffset.UTC)
+                .plusMinutes(ACCESS_TOKEN_EXPIRATION_MINUTES)
+                .toInstant();
     }
+
+    private Instant genRefreshTokenExpiration() {
+        return ZonedDateTime.now(ZoneOffset.UTC)
+                .plusDays(REFRESH_TOKEN_EXPIRATION_DAYS)
+                .toInstant();
+    }
+
 }

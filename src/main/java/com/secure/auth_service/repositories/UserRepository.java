@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Map;
@@ -16,8 +17,8 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
-    Optional<User> findByLogin(String login);
-
+    @Query("SELECT u FROM User u WHERE u.login = :login")
+    org.springframework.security.core.userdetails.UserDetails findByLogin(String login);
     boolean existsByLogin(String login);
 
     default Page<User> search(Map<String, Object> filters, Pageable pageable) {

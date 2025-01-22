@@ -31,7 +31,6 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public void register(@Valid @RequestBody UserRegisterDTO userDTO) {
-        SecurityUtils.checkRoleAndAuthority(Roles.ADMIN, Authority.CREATE);
         userService.register(userDTO.toEntity());
     }
 

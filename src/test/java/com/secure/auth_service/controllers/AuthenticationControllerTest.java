@@ -63,7 +63,7 @@ class AuthenticationControllerTest {
         when(tokenUtils.generateIdToken(user)).thenReturn("id-token");
         when(tokenUtils.getAccessTokenMaxAge()).thenReturn(3600L);
         when(tokenUtils.getRefreshTokenMaxAge()).thenReturn(7200L);
-        when(tokenUtils.getIdTokenMaxAge()).thenReturn(3600L);
+        when(tokenUtils.getRefreshTokenMaxAge()).thenReturn(7200L);
 
         ResponseEntity<Void> response = authenticationController.login(authDTO, httpServletResponse);
 

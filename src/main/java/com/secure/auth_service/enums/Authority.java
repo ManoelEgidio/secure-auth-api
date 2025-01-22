@@ -13,8 +13,4 @@ public enum Authority {
     SEARCH("SEARCH");
 
     private final String authority;
-
-    public String getAuthority() {
-        return authority;
-    }
 }

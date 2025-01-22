@@ -32,7 +32,6 @@ public abstract class AbstractModel {
 
     @CreatedDate
     @Column(name = "created_at", updatable = false, nullable = false)
-    @NotNull(message = "A data de criação não pode estar nula.")
     private LocalDate createdAt;
 
     @LastModifiedDate

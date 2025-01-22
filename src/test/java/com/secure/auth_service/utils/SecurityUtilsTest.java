@@ -84,7 +84,7 @@ class SecurityUtilsTest {
         CustomException exception = assertThrows(CustomException.class, () ->
                 SecurityUtils.checkRoleAndAuthority(Roles.ADMIN, Authority.CREATE)
         );
-        assertTrue(exception.getMessage().contains("Role não permitida."));
+        assertTrue(exception.getMessage().contains("Acesso negado: Role insuficiente."));
     }
 
     @Test

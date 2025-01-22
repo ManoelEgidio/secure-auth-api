@@ -123,10 +123,3 @@ O sistema conta com uma configuração robusta no Swagger para facilitar o desen
     - O uso de JWT permite fácil integração com sistemas distribuídos e escaláveis.
 
 ---
-
-## 🛠️ Como Executar
-
-### Pré-requisitos
-- **Java 21**
-- **Maven**
-- **PostgreSQL** configurado e rodando

@@ -6,6 +6,7 @@ import com.secure.auth_service.models.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,21 +22,20 @@ public class UserRegisterDTO {
     private UUID id;
 
     @Schema(description = "Nome completo do usuário", example = "João Silva", required = true)
-    @NotBlank
+    @NotNull
     private String name;
 
     @Schema(description = "Email do usuário", example = "joao.silva@example.com", required = true)
     @Email
-    @NotBlank
+    @NotNull
     private String login;
 
-    @Schema(description = "Senha do usuário", example = "Senha123", required = true)
-    @NotBlank
+    @Schema(description = "Senha do usuário", example = "Senha123")
     @Size(min = 6, message = "A senha deve ter pelo menos 6 caracteres.")
     private String password;
 
     @Schema(description = "Cargo do usuário", example = "USER", required = true)
-    @NotBlank
+    @NotNull
     private Roles role;
 
     @Schema(description = "Permissões do usuário", example = "[\"CREATE\", \"UPDATE\"]", required = true)

@@ -4,19 +4,20 @@ import com.secure.auth_service.enums.Authority;
 import com.secure.auth_service.enums.Roles;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -43,7 +44,7 @@ public class User extends AbstractModel implements UserDetails {
     @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres.")
     private String password;
 
-    @NotBlank(message = "A role não pode estar em branco.")
+    @NotNull(message = "A role não pode estar em branco.")
     @Enumerated(EnumType.STRING)
     private Roles role;
 
@@ -58,9 +59,13 @@ public class User extends AbstractModel implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return authorities.stream()
+        Set<GrantedAuthority> grantedAuthorities = authorities.stream()
                 .map(authority -> new SimpleGrantedAuthority(authority.getAuthority()))
-                .toList();
+                .collect(Collectors.toSet());
+
+        grantedAuthorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+
+        return grantedAuthorities;
     }
 
     @Override

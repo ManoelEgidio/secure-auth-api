@@ -47,9 +47,11 @@ class UserControllerTest {
                 .enabled(true)
                 .build();
 
-        List<GrantedAuthority> grantedAuthorities = new ArrayList<>(user.getAuthorities());
-
-        grantedAuthorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())); // e.g., "ROLE_ADMIN"
+        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
+        for (GrantedAuthority authority : user.getAuthorities()) {
+            grantedAuthorities.add(new SimpleGrantedAuthority(authority.getAuthority()));
+        }
+        grantedAuthorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 user,
@@ -69,14 +71,12 @@ class UserControllerTest {
         userRegisterDTO.setRole(Roles.USER);
         userRegisterDTO.setAuthorities(Set.of(Authority.CREATE));
 
-        // Simular o retorno do método
-        when(userService.register(any())).thenReturn(null); // Ou um objeto User válido
+        when(userService.register(any())).thenReturn(null);
 
         assertDoesNotThrow(() -> userController.register(userRegisterDTO));
 
         verify(userService, times(1)).register(any());
     }
-
 
     @Test
     void register_UserAlreadyExists() {
@@ -177,6 +177,18 @@ class UserControllerTest {
     }
 
     @Test
+    void disableUser_UserNotFound() {
+        UUID userId = UUID.randomUUID();
+
+        doThrow(new CustomException("Usuário não encontrado.")).when(userService).disableUser(eq(userId));
+
+        CustomException exception = assertThrows(CustomException.class, () -> userController.disableUser(userId));
+        assertEquals("Usuário não encontrado.", exception.getMessage());
+
+        verify(userService, times(1)).disableUser(eq(userId));
+    }
+
+    @Test
     void getById_Success() {
         UUID userId = UUID.randomUUID();
         User user = User.builder()
@@ -253,5 +265,70 @@ class UserControllerTest {
         assertEquals(1, result.getTotalElements());
 
         verify(userService, times(1)).search(anyMap(), anyInt(), anyInt(), anyString(), anyString());
+    }
+
+    @Test
+    void search_NameOnly() {
+        Page<UserSummaryDTO> page = new PageImpl<>(Collections.emptyList());
+
+        when(userService.search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"))).thenReturn(page);
+
+        Page<UserSummaryDTO> result = userController.search("João", null, null, 0, 20, "name", "asc");
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+
+        verify(userService, times(1)).search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"));
+    }
+
+    @Test
+    void search_LoginOnly() {
+        Page<UserSummaryDTO> page = new PageImpl<>(Collections.emptyList());
+
+        when(userService.search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"))).thenReturn(page);
+
+        Page<UserSummaryDTO> result = userController.search(null, "joao.silva@example.com", null, 0, 20, "name", "asc");
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+
+        verify(userService, times(1)).search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"));
+    }
+
+    @Test
+    void search_RoleOnly() {
+        Page<UserSummaryDTO> page = new PageImpl<>(Collections.emptyList());
+
+        when(userService.search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"))).thenReturn(page);
+
+        Page<UserSummaryDTO> result = userController.search(null, null, Roles.USER, 0, 20, "name", "asc");
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+
+        verify(userService, times(1)).search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"));
+    }
+
+    @Test
+    void search_NoFilters() {
+        Page<UserSummaryDTO> page = new PageImpl<>(Collections.emptyList());
+
+        when(userService.search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"))).thenReturn(page);
+
+        Page<UserSummaryDTO> result = userController.search(null, null, null, 0, 20, "name", "asc");
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+
+        verify(userService, times(1)).search(anyMap(), eq(0), eq(20), eq("name"), eq("asc"));
+    }
+
+    @Test
+    void search_InvalidSortDirection() {
+        Page<UserSummaryDTO> page = new PageImpl<>(Collections.emptyList());
+
+        when(userService.search(anyMap(), eq(0), eq(20), eq("name"), eq("desc"))).thenReturn(page);
+
+        Page<UserSummaryDTO> result = userController.search(null, null, null, 0, 20, "name", "desc");
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+
+        verify(userService, times(1)).search(anyMap(), eq(0), eq(20), eq("name"), eq("desc"));
     }
 }
