@@ -8,12 +8,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 @AllArgsConstructor
 public enum Roles {
 
-    ADMIN("ROLE_ADMIN"),
-    USER("ROLE_USER");
+    ADMIN("ADMIN"),
+    USER("USER");
 
     private final String roleName;
 
-    public SimpleGrantedAuthority getAuthority() {
-        return new SimpleGrantedAuthority(this.roleName);
-    }
 }

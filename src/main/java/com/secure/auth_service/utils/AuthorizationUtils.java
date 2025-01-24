@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class SecurityUtils {
+public class AuthorizationUtils {
 
     /**
      * Verifica se o usuário atual possui a role necessária.
@@ -36,11 +36,13 @@ public class SecurityUtils {
      */
     public static void checkAuthority(Authority requiredAuthority) {
         Authentication authentication = getAuthentication();
-        Set<String> userAuthorities = authentication.getAuthorities().stream()
+        Set<Authority> userAuthorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
+                .filter(authority -> !authority.startsWith("ROLE_")) // Filtra roles
+                .map(Authority::valueOf) // Converte para enum Authority
                 .collect(Collectors.toSet());
 
-        if (!userAuthorities.contains(requiredAuthority.getAuthority())) {
+        if (!userAuthorities.contains(requiredAuthority)) {
             throw new CustomException("Acesso negado: Permissão insuficiente.");
         }
     }

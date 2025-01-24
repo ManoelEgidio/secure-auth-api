@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -42,7 +43,9 @@ public class UserSummaryDTO extends AbstractDTO {
         this.login = user.getLogin();
         this.role = user.getRole();
         this.authorities = user.getAuthorities().stream()
-                .map(grantedAuthority -> Authority.valueOf(grantedAuthority.getAuthority()))
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> !authority.startsWith("ROLE_"))
+                .map(Authority::valueOf)
                 .collect(Collectors.toSet());
         this.enabled = user.getEnabled();
     }
