@@ -27,8 +27,12 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
             if (filters.containsKey("name")) {
                 predicate = criteriaBuilder.and(predicate,
-                        criteriaBuilder.like(root.get("name"), "%" + filters.get("name") + "%"));
+                        criteriaBuilder.like(
+                                criteriaBuilder.lower(root.get("name")),
+                                "%" + filters.get("name").toString().toLowerCase() + "%"
+                        ));
             }
+
             if (filters.containsKey("login")) {
                 predicate = criteriaBuilder.and(predicate,
                         criteriaBuilder.equal(root.get("login"), filters.get("login")));
@@ -43,4 +47,4 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
         return findAll(specification, pageable);
     }
-}
+    }

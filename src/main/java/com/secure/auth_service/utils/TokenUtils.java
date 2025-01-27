@@ -85,6 +85,14 @@ public class TokenUtils {
         }
     }
 
+    public String getIdFromToken(String token) {
+        try {
+            return jwtUtils.verifyToken(token).getClaim("id").asString();
+        } catch (JWTVerificationException e) {
+            return null;
+        }
+    }
+
     public Set<Authority> getAuthoritiesFromToken(String token) {
         try {
             return jwtUtils.extractAuthorities(jwtUtils.verifyToken(token));

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ public class AuthenticationUtils {
         Set<Authority> authorities = tokenUtils.getAuthoritiesFromToken(accessToken);
 
         User user = new User();
+        user.setId(UUID.fromString(tokenUtils.getIdFromToken(accessToken)));
         user.setLogin(login);
         user.setRole(Roles.valueOf(role));
         user.setAuthorities(authorities);

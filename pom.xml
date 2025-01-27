@@ -17,14 +17,16 @@
 	<description>Authentication and Authorization Service for Spring Boot</description>
 	<properties>
 		<java.version>21</java.version>
+		<native.maven.plugin.version>0.10.3</native.maven.plugin.version>
 		<jjwt.version>0.11.5</jjwt.version>
 		<springdoc.version>2.1.0</springdoc.version>
 		<bytebuddy.version>1.15.11</bytebuddy.version>
 		<jacoco.version>0.8.10</jacoco.version>
 		<local.repo>${user.home}/.m2/repository</local.repo>
+		<imageName>auth-api</imageName>
+		<mainClass>com.secure.auth_service.AuthServiceApplication</mainClass>
 	</properties>
 	<dependencies>
-		<!-- Dependências de produção -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -52,8 +54,6 @@
 			<optional>true</optional>
 			<version>1.18.36</version>
 		</dependency>
-
-		<!-- Dependências de teste -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
@@ -117,6 +117,20 @@
 			<groupId>redis.clients</groupId>
 			<artifactId>jedis</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>6.2.1.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-graalvm</artifactId>
+			<version>6.2.1.Final</version>
+		</dependency>
 	</dependencies>
 	<profiles>
 		<profile>
@@ -128,6 +142,41 @@
 				</property>
 			</activation>
 		</profile>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<version>${native.maven.plugin.version}</version>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<goals>
+									<goal>build</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<imageName>${imageName}</imageName>
+							<mainClass>${mainClass}</mainClass>
+							<fallback>false</fallback>
+							<buildArgs>
+								<buildArg>--enable-http</buildArg>
+								<buildArg>--enable-https</buildArg>
+								<buildArg>--initialize-at-build-time=all</buildArg>
+								<buildArg>--report-unsupported-elements-at-runtime</buildArg>
+								<buildArg>-J-Xmx8G</buildArg>
+								<buildArg>-H:DeadlockWatchdogInterval=60</buildArg>
+							</buildArgs>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
 	</profiles>
 
 	<build>
