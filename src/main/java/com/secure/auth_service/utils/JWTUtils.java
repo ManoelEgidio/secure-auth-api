@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.secure.auth_service.enums.Authority;
 import com.secure.auth_service.enums.Roles;
+import com.secure.auth_service.enums.TokenType;
 import com.secure.auth_service.models.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -56,6 +57,32 @@ public class JWTUtils {
                 .sign(Algorithm.RSA256(publicKey, privateKey));
     }
 
+    /**
+     * Gera um token JWT de ativação.
+     */
+    public String generateActivationToken(User user, Instant expiration) {
+        return JWT.create()
+                .withIssuer("auth-api")
+                .withSubject(user.getLogin())
+                .withClaim("id", user.getId().toString())
+                .withClaim("type", TokenType.ACTIVATION.name())
+                .withExpiresAt(Date.from(expiration))
+                .sign(Algorithm.RSA256(publicKey, privateKey));
+    }
+
+    /**
+     * Gera um token JWT de recuperação de senha.
+     */
+    public String generateRecoveryToken(User user, Instant expiration) {
+        return JWT.create()
+                .withIssuer("auth-api")
+                .withSubject(user.getLogin())
+                .withClaim("id", user.getId().toString())
+                .withClaim("type", TokenType.RECOVERY.name())
+                .withExpiresAt(Date.from(expiration))
+                .sign(Algorithm.RSA256(publicKey, privateKey));
+    }
+
     private String[] extractCleanAuthorities(User user) {
         return user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -103,6 +130,18 @@ public class JWTUtils {
     public Instant genRefreshTokenExpiration(long days) {
         return ZonedDateTime.now(ZoneOffset.UTC)
                 .plusDays(days)
+                .toInstant();
+    }
+
+    public Instant genActivationTokenExpiration(long minutes) {
+        return ZonedDateTime.now(ZoneOffset.UTC)
+                .plusMinutes(minutes)
+                .toInstant();
+    }
+
+    public Instant genRecoveryTokenExpiration(long minutes) {
+        return ZonedDateTime.now(ZoneOffset.UTC)
+                .plusMinutes(minutes)
                 .toInstant();
     }
 }

@@ -131,6 +131,14 @@
 			<artifactId>hibernate-graalvm</artifactId>
 			<version>6.2.1.Final</version>
 		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
 	</dependencies>
 	<profiles>
 		<profile>

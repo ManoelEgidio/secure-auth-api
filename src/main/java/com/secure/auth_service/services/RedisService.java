@@ -71,4 +71,24 @@ public class RedisService {
 
         redisTemplate.delete("refresh_whitelist:" + userId);
     }
+
+    public void putValue(String key, String value, long ttlSeconds) {
+        if (!isRedisAvailable()) return;
+        redisTemplate.opsForValue().set(key, value, ttlSeconds, TimeUnit.SECONDS);
+    }
+
+    public String getValue(String key) {
+        if (!isRedisAvailable()) return null;
+        return redisTemplate.opsForValue().get(key);
+    }
+
+    public void deleteKey(String key) {
+        if (!isRedisAvailable()) return;
+        redisTemplate.delete(key);
+    }
+
+    public boolean hasKey(String key) {
+        if (!isRedisAvailable()) return false;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
 }

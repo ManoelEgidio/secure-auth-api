@@ -9,8 +9,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 public enum Roles {
 
     ADMIN("ADMIN"),
+    MODERATOR("MODERATOR"),
     USER("USER");
 
     private final String roleName;
-
 }

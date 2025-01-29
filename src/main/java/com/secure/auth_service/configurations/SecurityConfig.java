@@ -25,7 +25,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final SecurityFilter securityFilter;
-
     private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
@@ -35,7 +34,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/logout", "/auth/refresh").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**","/h2-console/**", "/users").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**", "/users").permitAll()
                         .anyRequest().authenticated()
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
